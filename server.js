@@ -30,7 +30,7 @@ const tcpServer = net.createServer((socket) => {
       groups.forEach((group) => {
         socket.write(`ID: ${group.id}, Name: ${group.name}\n`);
       });
-
+      socket.write("Enter groups ID or name: ");
       if (messageHistory.length > 0) {
         socket.write("Last 2 messages:\n");
         messageHistory.slice(-2).forEach((message) => {
@@ -47,7 +47,9 @@ const tcpServer = net.createServer((socket) => {
       broadcast(`Connected Users: ${connectedUsers}`);
       socket.end();
     } else if (socket.group == null) {
-      const numbers = data.split(" ").map(Number);
+      const numbers = data
+        .split(" ")
+        .map((item) => (isNaN(item) ? item : Number(item)));
       socket.write(`Groups: ${numbers}\n`);
       socket.group = numbers;
     } else {
