@@ -1,4 +1,3 @@
-const { group } = require("console");
 const net = require("net");
 
 const connectedUsers = [];
@@ -17,6 +16,7 @@ const tcpServer = net.createServer((socket) => {
   // when server recieves data
   console.log("A client just connected");
   socket.write("Enter username: ");
+  socket.groups = [];
   socket.on("data", (clientData) => {
     data = clientData.toString();
     if (socket.username == null) {
@@ -27,6 +27,7 @@ const tcpServer = net.createServer((socket) => {
       console.log(`Connected Users: ${connectedUsers}`);
       broadcast(`Welcome ${data}`);
       broadcast(`Connected Users: ${connectedUsers}`);
+
       groups.forEach((group) => {
         socket.write(`ID: ${group.id}, Name: ${group.name}\n`);
       });
@@ -46,18 +47,49 @@ const tcpServer = net.createServer((socket) => {
       console.log(`Connected Users: ${connectedUsers}`);
       broadcast(`Connected Users: ${connectedUsers}`);
       socket.end();
-    } else if (socket.group == null) {
-      const numbers = data
+    } //else if (socket.group == null) {
+    //   const numbers = data
+    //     .split(" ")
+    //     .map((item) => (isNaN(item) ? item : Number(item)));
+    //   socket.write(`Groups: ${numbers}\n`);
+    //   socket.group = numbers;
+    else if (socket.groups.length === 0) {
+      // User joining groups
+      const selectedGroups = data
         .split(" ")
-        .map((item) => (isNaN(item) ? item : Number(item)));
-      socket.write(`Groups: ${numbers}\n`);
-      socket.group = numbers;
+        .map((item) => {
+          // Find group by ID or name
+          return groups.find(
+            (group) =>
+              group.id == item ||
+              group.name.toLowerCase() === item.toLowerCase()
+          );
+        })
+        .filter((group) => group); // Remove undefined groups
+
+      selectedGroups.forEach((group) => {
+        if (!group.users.includes(socket)) {
+          group.users.push(socket);
+          socket.groups.push(group);
+        }
+        const joinedGroupNames = selectedGroups
+          .map((group) => group.name)
+          .join(", ");
+        socket.write(`You have joined: ${joinedGroupNames}\n`);
+      });
     } else {
       // messages
       const currentTime = new Date().toLocaleString();
+      const userGroups = socket.groups;
       broadcastMessage = `${id} ${socket.username} ${currentTime}: ${data}`;
-      broadcast(`${broadcastMessage}`);
+      //broadcast(`${broadcastMessage}`);
       console.log(broadcastMessage);
+
+      userGroups.forEach((group) => {
+        if (group.users.includes(socket)) {
+          broadcastToGroup(group, broadcastMessage);
+        }
+      });
       messageHistory.push(broadcastMessage);
       id++;
     }
@@ -71,5 +103,10 @@ tcpServer.listen(5000, "localhost", () => {
 function broadcast(message) {
   connectedClients.forEach((client) => {
     client.write(message + "\n");
+  });
+}
+function broadcastToGroup(group, message) {
+  group.users.forEach((userSocket) => {
+    userSocket.write(message + "\n");
   });
 }
